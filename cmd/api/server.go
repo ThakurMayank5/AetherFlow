@@ -35,13 +35,22 @@ func main() {
 		job.Retries = 0
 		job.MaxRetries = 3
 
+		if job.Priority == "" {
+			job.Priority = models.JobPriorityMedium
+		}
+
+		if job.Priority != models.JobPriorityLow && job.Priority != models.JobPriorityMedium && job.Priority != models.JobPriorityHigh {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid priority"})
+			return
+		}
+
 		err := q.SaveJob(job, job.ID)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to save job"})
 			return
 		}
 
-		err = q.Enqueue(job)
+		err = q.EnqueueWithPriority(job, job.Priority)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to enqueue"})
 			return

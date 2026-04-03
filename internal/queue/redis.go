@@ -38,8 +38,33 @@ func (q *RedisQueue) Enqueue(job models.Job) error {
 	return q.client.LPush(ctx, "jobs", data).Err()
 }
 
+func (q *RedisQueue) EnqueueWithPriority(job models.Job, priority models.JobPriority) error {
+	data, err := json.Marshal(job)
+
+	if err != nil {
+		return err
+	}
+
+	queueName := string("jobs:" + priority)
+	return q.client.LPush(ctx, queueName, data).Err()
+}
+
 func (q *RedisQueue) Dequeue() (string, error) {
 	result, err := q.client.BRPop(ctx, 0, "jobs").Result()
+	if err != nil {
+		return "", err
+	}
+
+	return result[1], nil
+}
+
+func (q *RedisQueue) DequeueWithPriority() (string, error) {
+	result, err := q.client.BRPop(ctx, 0,
+		"jobs:HIGH",
+		"jobs:MEDIUM",
+		"jobs:LOW",
+	).Result()
+
 	if err != nil {
 		return "", err
 	}
