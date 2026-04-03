@@ -46,3 +46,16 @@ func (q *RedisQueue) Dequeue() (string, error) {
 
 	return result[1], nil
 }
+
+func (q *RedisQueue) SaveJob(job models.Job, id string) error {
+	data, err := json.Marshal(job)
+	if err != nil {
+		return err
+	}
+
+	return q.client.Set(ctx, "job:"+id, data, 0).Err()
+}
+
+func (q *RedisQueue) GetJob(id string) (string, error) {
+	return q.client.Get(ctx, "job:"+id).Result()
+}

@@ -1,5 +1,5 @@
 # CUSTOM FILES AND DIRECTORIES
-TODO.txt
+*.temp.*
 
 # Binaries for programs and plugins
 *.exe
