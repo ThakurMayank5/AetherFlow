@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/ThakurMayank5/AetherFlow/internal/models"
@@ -21,8 +22,14 @@ func (q *RedisQueue) GetContext() context.Context {
 }
 
 func NewRedisQueue() (*RedisQueue, error) {
+
+	addr := os.Getenv("REDIS_ADDR")
+	if addr == "" {
+		addr = "localhost:6379"
+	}
+
 	rdb := redis.NewClient(&redis.Options{
-		Addr: "localhost:6379",
+		Addr: addr,
 	})
 
 	// Testing connection

@@ -1,0 +1,27 @@
+version: "3.9"
+
+services:
+  redis:
+    image: redis:7
+    ports:
+      - "6379:6379"
+
+  api:
+    environment:
+      - REDIS_ADDR=redis:6379
+      - GIN_MODE=release
+    build: .
+    command: ./api
+    ports:
+      - "42069:42069"
+    depends_on:
+      - redis
+
+  worker:
+    environment:
+      - REDIS_ADDR=redis:6379
+      - GIN_MODE=release
+    build: .
+    command: ./worker
+    depends_on:
+      - redis
