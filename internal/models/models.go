@@ -8,6 +8,10 @@ type Job struct {
 	Retries    int         `json:"retries"`
 	MaxRetries int         `json:"max_retries"`
 	Priority   JobPriority `json:"priority"`
+	Delayed    bool        `json:"delayed"`
+
+	// This delay is in seconds from the time the job is created.
+	Delay int64 `json:"delay"`
 }
 
 type JobStatus string

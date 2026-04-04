@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/ThakurMayank5/AetherFlow/internal/models"
 	"github.com/redis/go-redis/v9"
@@ -12,7 +13,11 @@ import (
 var ctx = context.Background()
 
 type RedisQueue struct {
-	client *redis.Client
+	Client *redis.Client
+}
+
+func (q *RedisQueue) GetContext() context.Context {
+	return ctx
 }
 
 func NewRedisQueue() (*RedisQueue, error) {
@@ -26,7 +31,7 @@ func NewRedisQueue() (*RedisQueue, error) {
 		return nil, fmt.Errorf("failed to connect to Redis: %w", err)
 	}
 
-	return &RedisQueue{client: rdb}, nil
+	return &RedisQueue{Client: rdb}, nil
 }
 
 func (q *RedisQueue) Enqueue(job models.Job) error {
@@ -35,7 +40,7 @@ func (q *RedisQueue) Enqueue(job models.Job) error {
 		return err
 	}
 
-	return q.client.LPush(ctx, "jobs", data).Err()
+	return q.Client.LPush(ctx, "jobs", data).Err()
 }
 
 func (q *RedisQueue) EnqueueWithPriority(job models.Job, priority models.JobPriority) error {
@@ -46,11 +51,22 @@ func (q *RedisQueue) EnqueueWithPriority(job models.Job, priority models.JobPrio
 	}
 
 	queueName := string("jobs:" + priority)
-	return q.client.LPush(ctx, queueName, data).Err()
+	return q.Client.LPush(ctx, queueName, data).Err()
+}
+
+func (q *RedisQueue) EnqueueDelayed(job models.Job, delay time.Duration) error {
+	data, _ := json.Marshal(job)
+
+	execTime := time.Now().Add(delay).Unix()
+
+	return q.Client.ZAdd(ctx, "jobs:delayed", redis.Z{
+		Score:  float64(execTime),
+		Member: data,
+	}).Err()
 }
 
 func (q *RedisQueue) Dequeue() (string, error) {
-	result, err := q.client.BRPop(ctx, 0, "jobs").Result()
+	result, err := q.Client.BRPop(ctx, 0, "jobs").Result()
 	if err != nil {
 		return "", err
 	}
@@ -59,7 +75,7 @@ func (q *RedisQueue) Dequeue() (string, error) {
 }
 
 func (q *RedisQueue) DequeueWithPriority() (string, error) {
-	result, err := q.client.BRPop(ctx, 0,
+	result, err := q.Client.BRPop(ctx, 0,
 		"jobs:HIGH",
 		"jobs:MEDIUM",
 		"jobs:LOW",
@@ -78,9 +94,9 @@ func (q *RedisQueue) SaveJob(job models.Job, id string) error {
 		return err
 	}
 
-	return q.client.Set(ctx, "job:"+id, data, 0).Err()
+	return q.Client.Set(ctx, "job:"+id, data, 0).Err()
 }
 
 func (q *RedisQueue) GetJob(id string) (string, error) {
-	return q.client.Get(ctx, "job:"+id).Result()
+	return q.Client.Get(ctx, "job:"+id).Result()
 }

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -42,6 +43,30 @@ func main() {
 		if job.Priority != models.JobPriorityLow && job.Priority != models.JobPriorityMedium && job.Priority != models.JobPriorityHigh {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid priority"})
 			return
+		}
+
+		if job.Delayed {
+
+			if job.Delay <= 0 {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "invalid delay"})
+				return
+			}
+
+			// Convert seconds of delay to duration
+			delay := time.Duration(job.Delay) * time.Second
+
+			err := q.EnqueueDelayed(job, delay)
+			if err != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to enqueue delayed job"})
+				return
+			}
+
+			c.JSON(http.StatusOK, gin.H{
+				"job_id":  job.ID,
+				"message": "job scheduled with delay",
+			})
+			return
+
 		}
 
 		err := q.SaveJob(job, job.ID)
